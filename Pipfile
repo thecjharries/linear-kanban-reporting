@@ -15,6 +15,7 @@ notebook = "==6.1.5"
 gql = "*"
 requests = "*"
 requests-toolbelt = "*"
+matplotlib = "*"
 
 [dev-packages]
 

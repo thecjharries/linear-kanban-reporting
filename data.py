@@ -1,7 +1,7 @@
 from graphql import DocumentNode
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
-from os import environ
+from os import environ, path
 import json
 import pandas as pd
 from datetime import datetime
@@ -49,68 +49,27 @@ class LinearClient:
 TOKEN: str = environ.get('LINEAR_API_KEY')
 client: LinearClient = LinearClient(TOKEN)
 
+with open(path.join('queries', 'states.gql'), 'r') as file_handle:
+    states_query: DocumentNode = gql(file_handle.read())
 
-# states_query: DocumentNode = gql("""
-# query Query($filter: WorkflowStateFilter) {
-#   workflowStates(filter: $filter) {
-#     nodes {
-#       name
-#     }
-#   }
-# }
-# """)
-
-# variable_values: Dict[str, Any] = {
-#     'filter': {
-#         'team': {
-#             'name': {
-#                 'eq': 'Juristat'
-#             }
-#         },
-#     }
-# }
-
-# states_result: Dict[str, Any] = client.execute(
-#     states_query, variable_values=variable_values)
-
-# with open('states.json', 'w') as f:
-#     json.dump(states_result, f)
-
-
-issues_query: DocumentNode = gql("""
-query IssuesQuery($filter: IssueFilter, $after: String) {
-  issues(filter: $filter, first: 50, after: $after) {
-    nodes {
-      id
-      number
-      identifier
-      history {
-        nodes {
-          toState {
-            name
-          }
-          fromState {
-            name
-          }
-          createdAt
-        }
-      }
-      state {
-        name
-      }
-      title
-      createdAt
-      assignee {
-        displayName
-      }
+variable_values: Dict[str, Any] = {
+    'filter': {
+        'team': {
+            'name': {
+                'eq': 'Juristat'
+            }
+        },
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-  }
 }
-""")
+
+states_result: Dict[str, Any] = client.execute(
+    states_query, variable_values=variable_values)
+
+with open('states.json', 'w') as f:
+    json.dump(states_result, f)
+
+with open(path.join('queries', 'issues.gql'), 'r') as file_handle:
+    issues_query: DocumentNode = gql(file_handle.read())
 
 variable_values: Dict[str, Any] = {
     'filter': {
@@ -124,7 +83,6 @@ variable_values: Dict[str, Any] = {
         }
     }
 }
-
 
 issues_result = client.drain(
     query=issues_query,

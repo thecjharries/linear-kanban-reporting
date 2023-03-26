@@ -5,46 +5,57 @@ import json
 import pandas as pd
 from datetime import datetime
 
-
-# URL = 'https://api.linear.app/graphql'
-# TOKEN = environ.get('LINEAR_API_KEY')
+URL = 'https://api.linear.app/graphql'
 
 
-# transport = RequestsHTTPTransport(
-#     url="https://api.linear.app/graphql",
-#     verify=True,
-#     retries=3,
-#     headers={
-#         'Authorization': TOKEN,
-#     }
-# )
+class LinearClient:
+    def __init__(self, token):
+        self.token = token
+        self.transport = RequestsHTTPTransport(
+            url=URL,
+            verify=True,
+            retries=3,
+            headers={
+                'Authorization': self.token,
+            }
+        )
+        self.client = Client(transport=self.transport,
+                             fetch_schema_from_transport=True)
 
-# client = Client(transport=transport, fetch_schema_from_transport=True)
+    def execute(self, query, variable_values=None):
+        return self.client.execute(query, variable_values=variable_values)
 
-# states_query = gql("""
-# query Query($filter: WorkflowStateFilter) {
-#   workflowStates(filter: $filter) {
-#     nodes {
-#       name
-#     }
-#   }
-# }
-# """)
 
-# variable_values = {
-#     'filter': {
-#         'team': {
-#             'name': {
-#                 'eq': 'Juristat'
-#             }
-#         },
-#     }
-# }
+TOKEN = environ.get('LINEAR_API_KEY')
+client = LinearClient(TOKEN)
 
-# states_result = client.execute(query, variable_values=variable_values)
 
-# with open('states.json', 'w') as f:
-#     json.dump(states_result, f)
+states_query = gql("""
+query Query($filter: WorkflowStateFilter) {
+  workflowStates(filter: $filter) {
+    nodes {
+      name
+    }
+  }
+}
+""")
+
+variable_values = {
+    'filter': {
+        'team': {
+            'name': {
+                'eq': 'Juristat'
+            }
+        },
+    }
+}
+
+states_result = client.execute(states_query, variable_values=variable_values)
+
+with open('states.json', 'w') as f:
+    json.dump(states_result, f)
+
+exit(0)
 
 query = gql("""
 query ExampleQuery($filter: IssueFilter) {

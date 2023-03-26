@@ -5,7 +5,8 @@ from os import environ
 import json
 import pandas as pd
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
+from functools import reduce
 
 URL: str = 'https://api.linear.app/graphql'
 
@@ -26,6 +27,23 @@ class LinearClient:
 
     def execute(self, query: DocumentNode, variable_values: Dict[str, Any] = None) -> Dict[str, Any]:
         return self.client.execute(query, variable_values=variable_values)
+
+    def paginate(self, query: DocumentNode, path: Tuple[str], variable_values: Dict[str, Any] = None) -> Dict[str, Any]:
+        page_info = {
+            'hasNextPage': True,
+            'endCursor': None
+        }
+        while page_info['hasNextPage']:
+            variable_values['after'] = page_info['endCursor']
+            result = self.execute(query, variable_values=variable_values)
+            page_info = reduce(dict.get, path, result)
+            yield result
+
+    def drain(self, query: DocumentNode, desired_path: Tuple[str], page_info_path: Tuple[str], variable_values: Dict[str, Any] = None) -> List[Any]:
+        result = list()
+        for page in self.paginate(query, page_info_path, variable_values=variable_values):
+            result.extend(reduce(dict.get, desired_path, page))
+        return result
 
 
 TOKEN: str = environ.get('LINEAR_API_KEY')
@@ -108,8 +126,12 @@ variable_values: Dict[str, Any] = {
 }
 
 
-issues_result = client.execute(issues_query, variable_values=variable_values)
-print(len(issues_result['issues']['nodes']))
+issues_result = client.drain(
+    query=issues_query,
+    desired_path=('issues', 'nodes'),
+    page_info_path=('issues', 'pageInfo'),
+    variable_values=variable_values,
+)
 
 with open('data.json', 'w') as f:
     json.dump(issues_result, f)

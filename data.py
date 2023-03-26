@@ -32,37 +32,36 @@ TOKEN: str = environ.get('LINEAR_API_KEY')
 client: LinearClient = LinearClient(TOKEN)
 
 
-states_query: DocumentNode = gql("""
-query Query($filter: WorkflowStateFilter) {
-  workflowStates(filter: $filter) {
-    nodes {
-      name
-    }
-  }
-}
-""")
+# states_query: DocumentNode = gql("""
+# query Query($filter: WorkflowStateFilter) {
+#   workflowStates(filter: $filter) {
+#     nodes {
+#       name
+#     }
+#   }
+# }
+# """)
 
-variable_values: Dict[str, Any] = {
-    'filter': {
-        'team': {
-            'name': {
-                'eq': 'Juristat'
-            }
-        },
-    }
-}
+# variable_values: Dict[str, Any] = {
+#     'filter': {
+#         'team': {
+#             'name': {
+#                 'eq': 'Juristat'
+#             }
+#         },
+#     }
+# }
 
-states_result: Dict[str, Any] = client.execute(
-    states_query, variable_values=variable_values)
+# states_result: Dict[str, Any] = client.execute(
+#     states_query, variable_values=variable_values)
 
-with open('states.json', 'w') as f:
-    json.dump(states_result, f)
+# with open('states.json', 'w') as f:
+#     json.dump(states_result, f)
 
-exit(0)
 
-query = gql("""
-query ExampleQuery($filter: IssueFilter) {
-  issues(filter: $filter) {
+issues_query: DocumentNode = gql("""
+query IssuesQuery($filter: IssueFilter, $after: String) {
+  issues(filter: $filter, first: 50, after: $after) {
     nodes {
       id
       number
@@ -87,28 +86,35 @@ query ExampleQuery($filter: IssueFilter) {
         displayName
       }
     }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
 }
 """)
 
-# variable_values = {
-#     'filter': {
-#         'team': {
-#             'name': {
-#                 'eq': 'Juristat'
-#             }
-#         },
-#         'createdAt': {
-#             'gt': '2023-03-01'
-#         }
-#     }
-# }
+variable_values: Dict[str, Any] = {
+    'filter': {
+        'team': {
+            'name': {
+                'eq': 'Juristat'
+            }
+        },
+        'createdAt': {
+            'gt': '2023-03-01'
+        }
+    }
+}
 
 
-# issues_result = client.execute(query, variable_values=variable_values)
+issues_result = client.execute(issues_query, variable_values=variable_values)
+print(len(issues_result['issues']['nodes']))
 
-# with open('data.json', 'w') as f:
-#     json.dump(issues_result, f)
+with open('data.json', 'w') as f:
+    json.dump(issues_result, f)
+
+exit(0)
 
 with open('states.json') as f:
     states_result = json.load(f)

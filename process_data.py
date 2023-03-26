@@ -5,24 +5,22 @@ from datetime import datetime
 TIME_FORMAT = "%d/%m/%Y %H:%M:%SZ"
 CURRENT_NOW = pd.to_datetime(datetime.utcnow().strftime(TIME_FORMAT))
 
+# Generate a list of workflow states
 with open('states.json') as f:
     states_result = json.load(f)
-
 states = list()
 for state in states_result['workflowStates']['nodes']:
     states.append(state['name'])
 
+# Loop through issues and generate a dataframe of issue state dates
 columns = ['ID']
 for state in states:
     columns.append(f"{state} Start")
     columns.append(f"{state} End")
     columns.append(f"{state} Duration")
-
 issue_state_dates = pd.DataFrame(columns=columns)
-
 with open('data.json') as f:
     issues_result = json.load(f)
-
 oldest_created_date = CURRENT_NOW
 for issue in issues_result:
     issue_created_at = pd.to_datetime(issue['createdAt'])
@@ -52,19 +50,24 @@ for issue in issues_result:
                 row[f"{state} Start"]
     issue_state_dates.loc[len(issue_state_dates)] = row
 
+# Calculate cycle time
 cycle_time_df = issue_state_dates[
     ~issue_state_dates['Done Start'].isna() &
     ~issue_state_dates['In Progress Start'].isna()
 ]
 cycle_time_durations = cycle_time_df['Done Start'] - \
     cycle_time_df['In Progress Start']
-throughput = len(cycle_time_durations)
 cycle_time = {
     'mean': cycle_time_durations.mean(),
     'median': cycle_time_durations.median(),
     'min': cycle_time_durations.min(),
     'max': cycle_time_durations.max(),
 }
+
+# Generate throughput off cycle time
+throughput = len(cycle_time_durations)
+
+# Calculate lead time of issues that have been committed to
 committed_lead_time_df = issue_state_dates[
     ~issue_state_dates['Done Start'].isna() &
     (
@@ -87,6 +90,8 @@ committed_lead_time = {
     'min': committed_lead_time_durations['Duration'].min(),
     'max': committed_lead_time_durations['Duration'].max(),
 }
+
+# Calculate lead time of issues that have been suggested but not committed
 suggested_lead_time_df = issue_state_dates[
     ~issue_state_dates['Done Start'].isna() & (
         ~issue_state_dates['Triage Start'].isna() |
@@ -109,8 +114,8 @@ suggested_lead_time = {
     'max': suggested_lead_time_durations['Duration'].max(),
 }
 
+# Create dataframe of state counts per day for cumulative flow diagram
 state_counts = pd.DataFrame(columns=['Date'] + states + ['Total'])
-
 for day in pd.date_range(start=oldest_created_date, end=pd.to_datetime(datetime.utcnow().strftime("%d/%m/%Y %H:%M:%SZ")), freq='D', normalize=True):
     next_day = day + pd.Timedelta(days=1)
     row = dict()
@@ -131,7 +136,6 @@ for day in pd.date_range(start=oldest_created_date, end=pd.to_datetime(datetime.
         if '' != latest_state:
             row[latest_state] += 1
             row['Total'] += 1
-
     state_counts.loc[len(state_counts)] = row
 
 print(throughput)

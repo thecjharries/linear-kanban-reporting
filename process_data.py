@@ -1,62 +1,6 @@
-from graphql import DocumentNode
-from gql import gql
-from os import environ, path
 import json
 import pandas as pd
 from datetime import datetime
-from typing import Any, Dict
-from linear_client import LinearClient
-
-
-TOKEN: str = environ.get('LINEAR_API_KEY')
-client: LinearClient = LinearClient(TOKEN)
-
-with open(path.join('queries', 'states.gql'), 'r') as file_handle:
-    states_query: DocumentNode = gql(file_handle.read())
-
-variable_values: Dict[str, Any] = {
-    'filter': {
-        'team': {
-            'name': {
-                'eq': 'Juristat'
-            }
-        },
-    }
-}
-
-states_result: Dict[str, Any] = client.execute(
-    states_query, variable_values=variable_values)
-
-with open('states.json', 'w') as f:
-    json.dump(states_result, f)
-
-with open(path.join('queries', 'issues.gql'), 'r') as file_handle:
-    issues_query: DocumentNode = gql(file_handle.read())
-
-variable_values: Dict[str, Any] = {
-    'filter': {
-        'team': {
-            'name': {
-                'eq': 'Juristat'
-            }
-        },
-        'createdAt': {
-            'gt': '2023-03-01'
-        }
-    }
-}
-
-issues_result = client.drain(
-    query=issues_query,
-    desired_path=('issues', 'nodes'),
-    page_info_path=('issues', 'pageInfo'),
-    variable_values=variable_values,
-)
-
-with open('data.json', 'w') as f:
-    json.dump(issues_result, f)
-
-exit(0)
 
 with open('states.json') as f:
     states_result = json.load(f)
@@ -78,7 +22,7 @@ with open('data.json') as f:
 
 oldest_created_date = pd.to_datetime(
     datetime.utcnow().strftime("%d/%m/%Y %H:%M:%SZ"))
-for issue in issues_result['issues']['nodes']:
+for issue in issues_result:
     issue_created_at = pd.to_datetime(issue['createdAt'])
     if issue_created_at < oldest_created_date:
         oldest_created_date = issue_created_at
@@ -108,7 +52,62 @@ for issue in issues_result['issues']['nodes']:
                 row[f"{state} Start"]
     issue_state_dates.loc[len(issue_state_dates)] = row
 
-pd.set_option('display.max_columns', None)
+cycle_time_df = issue_state_dates[
+    ~issue_state_dates['Done Start'].isna() &
+    ~issue_state_dates['In Progress Start'].isna()
+]
+cycle_time_durations = cycle_time_df['Done Start'] - \
+    cycle_time_df['In Progress Start']
+throughput = len(cycle_time_durations)
+cycle_time = {
+    'mean': cycle_time_durations.mean(),
+    'median': cycle_time_durations.median(),
+    'min': cycle_time_durations.min(),
+    'max': cycle_time_durations.max(),
+}
+committed_lead_time_df = issue_state_dates[
+    ~issue_state_dates['Done Start'].isna() &
+    (
+        ~issue_state_dates['Todo Start'].isna() |
+        ~issue_state_dates['Todo backlog Start'].isna()
+    )
+]
+committed_lead_time_durations = pd.DataFrame(
+    columns=['Start', 'End', 'Duration'])
+committed_lead_time_durations['End'] = committed_lead_time_df['Done Start']
+committed_lead_time_durations['Start'] = committed_lead_time_df['Todo Start']
+for index, row in committed_lead_time_durations.iterrows():
+    if pd.isna(row['Start']):
+        row['Start'] = committed_lead_time_df['Todo backlog Start'][index]
+committed_lead_time_durations['Duration'] = committed_lead_time_durations['End'] - \
+    committed_lead_time_durations['Start']
+committed_lead_time = {
+    'mean': committed_lead_time_durations['Duration'].mean(),
+    'median': committed_lead_time_durations['Duration'].median(),
+    'min': committed_lead_time_durations['Duration'].min(),
+    'max': committed_lead_time_durations['Duration'].max(),
+}
+suggested_lead_time_df = issue_state_dates[
+    ~issue_state_dates['Done Start'].isna() & (
+        ~issue_state_dates['Triage Start'].isna() |
+        ~issue_state_dates['For Grooming Start'].isna()
+    )
+]
+suggested_lead_time_durations = pd.DataFrame(
+    columns=['Start', 'End', 'Duration'])
+suggested_lead_time_durations['End'] = suggested_lead_time_df['Done Start']
+suggested_lead_time_durations['Start'] = suggested_lead_time_df['Triage Start']
+for index, row in suggested_lead_time_durations.iterrows():
+    if pd.isna(row['Start']):
+        row['Start'] = suggested_lead_time_df['For Grooming Start'][index]
+suggested_lead_time_durations['Duration'] = suggested_lead_time_durations['End'] - \
+    suggested_lead_time_durations['Start']
+suggested_lead_time = {
+    'mean': suggested_lead_time_durations['Duration'].mean(),
+    'median': suggested_lead_time_durations['Duration'].median(),
+    'min': suggested_lead_time_durations['Duration'].min(),
+    'max': suggested_lead_time_durations['Duration'].max(),
+}
 
 state_counts = pd.DataFrame(columns=['Date'] + states + ['Total'])
 
@@ -135,4 +134,8 @@ for day in pd.date_range(start=oldest_created_date, end=pd.to_datetime(datetime.
 
     state_counts.loc[len(state_counts)] = row
 
+print(throughput)
+print(cycle_time)
+print(committed_lead_time)
+print(suggested_lead_time)
 print(state_counts)

@@ -1,100 +1,62 @@
-from gql import Client, gql
-from gql.transport.requests import RequestsHTTPTransport
-from os import environ
+from graphql import DocumentNode
+from gql import gql
+from os import environ, path
 import json
 import pandas as pd
 from datetime import datetime
+from typing import Any, Dict
+from linear_client import LinearClient
 
 
-# URL = 'https://api.linear.app/graphql'
-# TOKEN = environ.get('LINEAR_API_KEY')
+TOKEN: str = environ.get('LINEAR_API_KEY')
+client: LinearClient = LinearClient(TOKEN)
 
+with open(path.join('queries', 'states.gql'), 'r') as file_handle:
+    states_query: DocumentNode = gql(file_handle.read())
 
-# transport = RequestsHTTPTransport(
-#     url="https://api.linear.app/graphql",
-#     verify=True,
-#     retries=3,
-#     headers={
-#         'Authorization': TOKEN,
-#     }
-# )
-
-# client = Client(transport=transport, fetch_schema_from_transport=True)
-
-# states_query = gql("""
-# query Query($filter: WorkflowStateFilter) {
-#   workflowStates(filter: $filter) {
-#     nodes {
-#       name
-#     }
-#   }
-# }
-# """)
-
-# variable_values = {
-#     'filter': {
-#         'team': {
-#             'name': {
-#                 'eq': 'Juristat'
-#             }
-#         },
-#     }
-# }
-
-# states_result = client.execute(query, variable_values=variable_values)
-
-# with open('states.json', 'w') as f:
-#     json.dump(states_result, f)
-
-query = gql("""
-query ExampleQuery($filter: IssueFilter) {
-  issues(filter: $filter) {
-    nodes {
-      id
-      number
-      identifier
-      history {
-        nodes {
-          toState {
-            name
-          }
-          fromState {
-            name
-          }
-          createdAt
-        }
-      }
-      state {
-        name
-      }
-      title
-      createdAt
-      assignee {
-        displayName
-      }
+variable_values: Dict[str, Any] = {
+    'filter': {
+        'team': {
+            'name': {
+                'eq': 'Juristat'
+            }
+        },
     }
-  }
 }
-""")
 
-# variable_values = {
-#     'filter': {
-#         'team': {
-#             'name': {
-#                 'eq': 'Juristat'
-#             }
-#         },
-#         'createdAt': {
-#             'gt': '2023-03-01'
-#         }
-#     }
-# }
+states_result: Dict[str, Any] = client.execute(
+    states_query, variable_values=variable_values)
 
+with open('states.json', 'w') as f:
+    json.dump(states_result, f)
 
-# issues_result = client.execute(query, variable_values=variable_values)
+with open(path.join('queries', 'issues.gql'), 'r') as file_handle:
+    issues_query: DocumentNode = gql(file_handle.read())
 
-# with open('data.json', 'w') as f:
-#     json.dump(issues_result, f)
+variable_values: Dict[str, Any] = {
+    'filter': {
+        'team': {
+            'name': {
+                'eq': 'Juristat'
+            }
+        },
+        'createdAt': {
+            'gt': '2023-03-01'
+        }
+    }
+}
+
+issues_result = client.drain(
+    query=issues_query,
+    desired_path=('issues', 'nodes'),
+    page_info_path=('issues', 'pageInfo'),
+    variable_values=variable_values,
+)
+
+with open('data.json', 'w') as f:
+    json.dump(issues_result, f)
+
+exit(0)
 
 with open('states.json') as f:
     states_result = json.load(f)

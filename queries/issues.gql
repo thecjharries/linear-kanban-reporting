@@ -1,0 +1,32 @@
+query IssuesQuery($filter: IssueFilter, $after: String) {
+  issues(filter: $filter, first: 50, after: $after) {
+    nodes {
+      id
+      number
+      identifier
+      history {
+        nodes {
+          toState {
+            name
+          }
+          fromState {
+            name
+          }
+          createdAt
+        }
+      }
+      state {
+        name
+      }
+      title
+      createdAt
+      assignee {
+        displayName
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

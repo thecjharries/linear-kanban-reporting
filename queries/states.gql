@@ -1,0 +1,7 @@
+query StatesQuery($filter: WorkflowStateFilter) {
+  workflowStates(filter: $filter) {
+    nodes {
+      name
+    }
+  }
+}

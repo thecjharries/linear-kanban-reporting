@@ -12,6 +12,10 @@ jupyter-nbextensions-configurator = "*"
 ipywidgets = "*"
 # https://stackoverflow.com/a/75603666
 notebook = "==6.1.5"
+gql = "*"
+requests = "*"
+requests-toolbelt = "*"
+matplotlib = "*"
 
 [dev-packages]
 

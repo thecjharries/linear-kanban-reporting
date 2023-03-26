@@ -39,13 +39,12 @@ for issue in issues_result:
     for history in issue['history']['nodes']:
         if history['fromState'] is None:
             continue
-        row[f"{history['fromState']['name']} End"] = pd.to_datetime(
-            history['createdAt'])
-        row[f"{history['toState']['name']} Start"] = pd.to_datetime(
-            history['createdAt'])
-        if pd.to_datetime(history['createdAt']) < oldest_state_date:
+        history_created_at = pd.to_datetime(history['createdAt'])
+        row[f"{history['fromState']['name']} End"] = history_created_at
+        row[f"{history['toState']['name']} Start"] = history_created_at
+        if history_created_at < oldest_state_date:
             oldest_state = history['fromState']['name']
-            oldest_state_date = pd.to_datetime(history['createdAt'])
+            oldest_state_date = history_created_at
     row[f"{oldest_state} Start"] = issue_created_at
     for state in states:
         if row[f"{state} Start"] is not pd.NA and row[f"{state} End"] is not pd.NA:

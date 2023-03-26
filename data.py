@@ -1,17 +1,19 @@
+from graphql import DocumentNode
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 from os import environ
 import json
 import pandas as pd
 from datetime import datetime
+from typing import Any, Dict
 
-URL = 'https://api.linear.app/graphql'
+URL: str = 'https://api.linear.app/graphql'
 
 
 class LinearClient:
-    def __init__(self, token):
-        self.token = token
-        self.transport = RequestsHTTPTransport(
+    def __init__(self, token: str):
+        self.token: str = token
+        self.transport: RequestsHTTPTransport = RequestsHTTPTransport(
             url=URL,
             verify=True,
             retries=3,
@@ -19,18 +21,18 @@ class LinearClient:
                 'Authorization': self.token,
             }
         )
-        self.client = Client(transport=self.transport,
-                             fetch_schema_from_transport=True)
+        self.client: Client = Client(transport=self.transport,
+                                     fetch_schema_from_transport=True)
 
-    def execute(self, query, variable_values=None):
+    def execute(self, query: DocumentNode, variable_values: Dict[str, Any] = None) -> Dict[str, Any]:
         return self.client.execute(query, variable_values=variable_values)
 
 
-TOKEN = environ.get('LINEAR_API_KEY')
-client = LinearClient(TOKEN)
+TOKEN: str = environ.get('LINEAR_API_KEY')
+client: LinearClient = LinearClient(TOKEN)
 
 
-states_query = gql("""
+states_query: DocumentNode = gql("""
 query Query($filter: WorkflowStateFilter) {
   workflowStates(filter: $filter) {
     nodes {
@@ -40,7 +42,7 @@ query Query($filter: WorkflowStateFilter) {
 }
 """)
 
-variable_values = {
+variable_values: Dict[str, Any] = {
     'filter': {
         'team': {
             'name': {
@@ -50,7 +52,8 @@ variable_values = {
     }
 }
 
-states_result = client.execute(states_query, variable_values=variable_values)
+states_result: Dict[str, Any] = client.execute(
+    states_query, variable_values=variable_values)
 
 with open('states.json', 'w') as f:
     json.dump(states_result, f)

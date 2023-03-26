@@ -2,6 +2,9 @@ import json
 import pandas as pd
 from datetime import datetime
 
+TIME_FORMAT = "%d/%m/%Y %H:%M:%SZ"
+CURRENT_NOW = pd.to_datetime(datetime.utcnow().strftime(TIME_FORMAT))
+
 with open('states.json') as f:
     states_result = json.load(f)
 
@@ -20,8 +23,7 @@ issue_state_dates = pd.DataFrame(columns=columns)
 with open('data.json') as f:
     issues_result = json.load(f)
 
-oldest_created_date = pd.to_datetime(
-    datetime.utcnow().strftime("%d/%m/%Y %H:%M:%SZ"))
+oldest_created_date = CURRENT_NOW
 for issue in issues_result:
     issue_created_at = pd.to_datetime(issue['createdAt'])
     if issue_created_at < oldest_created_date:
@@ -33,8 +35,7 @@ for issue in issues_result:
         row[f"{state} End"] = pd.NA
         row[f"{state} Duration"] = pd.NA
     oldest_state = 'For Grooming'
-    oldest_state_date = pd.to_datetime(
-        datetime.utcnow().strftime("%d/%m/%Y %H:%M:%SZ"))
+    oldest_state_date = CURRENT_NOW
     for history in issue['history']['nodes']:
         if history['fromState'] is None:
             continue

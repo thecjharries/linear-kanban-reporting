@@ -5,6 +5,9 @@ import json
 from typing import Any, Dict
 from linear_client import LinearClient
 
+TEAM_NAME: str = 'Juristat'
+AFTER_DATE: str = '2023-03-01'
+BEFORE_DATE: str = '2023-03-31'
 
 TOKEN: str = environ.get('LINEAR_API_KEY')
 client: LinearClient = LinearClient(TOKEN)
@@ -16,7 +19,7 @@ variable_values: Dict[str, Any] = {
     'filter': {
         'team': {
             'name': {
-                'eq': 'Juristat'
+                'eq': TEAM_NAME
             }
         },
     }
@@ -35,12 +38,13 @@ variable_values: Dict[str, Any] = {
     'filter': {
         'team': {
             'name': {
-                'eq': 'Juristat'
+                'eq': TEAM_NAME
             }
         },
         'createdAt': {
-            'gt': '2023-03-01'
-        }
+            'gt': BEFORE_DATE,
+            'lt': AFTER_DATE,
+        },
     }
 }
 

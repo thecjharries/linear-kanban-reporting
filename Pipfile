@@ -16,6 +16,7 @@ gql = "*"
 requests = "*"
 requests-toolbelt = "*"
 matplotlib = "*"
+tabulate = "*"
 
 [dev-packages]
 
